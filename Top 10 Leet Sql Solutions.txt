@@ -1,0 +1,541 @@
+1) Game Play Analysis-IV
+
+Table: Activity
+
++--------------+---------+
+| Column Name  | Type    |
++--------------+---------+
+| player_id    | int     |
+| device_id    | int     |
+| event_date   | date    |
+| games_played | int     |
++--------------+---------+
+(player_id, event_date) is the primary key (combination of columns with unique values) of this table.
+This table shows the activity of players of some games.
+Each row is a record of a player who logged in and played a number of games (possibly 0) before logging out on someday using some device.
+ 
+
+Write a solution to report the fraction of players that logged in again on the day after the day they first logged in, rounded to 2 decimal places. In other words, you need to count the number of players that logged in for at least two consecutive days starting from their first login date, then divide that number by the total number of players.
+
+The result format is in the following example.
+
+Query:
+select ROUND(count(distinct A2.player_id)/count(distinct A1.player_id)::numeric,2) as fraction from 
+Activity as A1
+Left JOIN
+	(select player_id
+	from
+		(select player_id,max(event_date) as F,min(event_date) as P
+		from 
+		Activity 
+		group by player_id)
+	where 
+	Extract(day from F)-Extract(day from P)=1
+	and 
+	Extract(month from F)-Extract(month from P)=0) as A2
+ON 
+A1.player_id = A2.player_id
+;
+
+
+2) Managers with at least 5 direct reports:-
+
+Table: Employee
+
++-------------+---------+
+| Column Name | Type    |
++-------------+---------+
+| id          | int     |
+| name        | varchar |
+| department  | varchar |
+| managerId   | int     |
++-------------+---------+
+id is the primary key (column with unique values) for this table.
+Each row of this table indicates the name of an employee, their department, and the id of their manager.
+If managerId is null, then the employee does not have a manager.
+No employee will be the manager of themself.
+ 
+
+Write a solution to find managers with at least five direct reports.
+
+Return the result table in any order.
+
+The result format is in the following example.
+
+Query:
+select name 
+from 
+Employee
+where 
+id in
+	(
+	select managerID 
+	from
+	Employee
+	group by managerID
+	having count(id) >= 5)
+;
+
+3) Count Student Number in Departments:-
+Table: Student
+
++--------------+---------+
+| Column Name  | Type    |
++--------------+---------+
+| student_id   | int     |
+| student_name | varchar |
+| gender       | varchar |
+| dept_id      | int     |
++--------------+---------+
+student_id is the primary key (column with unique values) for this table.
+dept_id is a foreign key (reference column) to dept_id in the Department tables.
+Each row of this table indicates the name of a student, their gender, and the id of their department.
+ 
+
+Table: Department
+
++-------------+---------+
+| Column Name | Type    |
++-------------+---------+
+| dept_id     | int     |
+| dept_name   | varchar |
++-------------+---------+
+dept_id is the primary key (column with unique values) for this table.
+Each row of this table contains the id and the name of a department.
+ 
+
+Write a solution to report the respective department name and number of students majoring in each department for all departments in the Department table (even ones with no current students).
+
+Return the result table ordered by student_number in descending order. In case of a tie, order them by dept_name alphabetically.
+
+The result format is in the following example.
+
+Query:
+select D.dept_name,count(S.student_id) as student_number
+from Department D
+left Join
+Student S
+ON
+D.dept_id = S.dept_id 
+group by D.dept_name
+order by student_number DESC,D.dept_name ASC;
+
+
+3) Active Businesses:-
+Table: Events
+
++---------------+---------+
+| Column Name   | Type    |
++---------------+---------+
+| business_id   | int     |
+| event_type    | varchar |
+| occurrences   | int     | 
++---------------+---------+
+(business_id, event_type) is the primary key (combination of columns with unique values) of this table.
+Each row in the table logs the info that an event of some type occurred at some business for a number of times.
+The average activity for a particular event_type is the average occurrences across all companies that have this event.
+
+An active business is a business that has more than one event_type such that their occurrences is strictly greater than the average activity for that event.
+
+Write a solution to find all active businesses.
+
+Return the result table in any order.
+
+The result format is in the following example.
+
+Query:
+With CTE as 
+(select  business_id,count(event_type) as Event_Count
+from
+(Select E.business_id as business_id,E.event_type as event_type,E.occurrences as occurrences ,A.AV as AV
+from
+Events E 
+INNER JOIN (select event_type, 
+		avg(occurrences) as AV
+		from 
+		Events
+		group by event_type) A 
+ON E.event_type = A.event_type)
+where 
+occurrences > AV
+group by business_id)
+select business_id
+from 
+CTE
+where Event_Count >1;
+
+
+4) Last Person to Fit in the Bus:-
+Table: Queue
+
++-------------+---------+
+| Column Name | Type    |
++-------------+---------+
+| person_id   | int     |
+| person_name | varchar |
+| weight      | int     |
+| turn        | int     |
++-------------+---------+
+person_id column contains unique values.
+This table has the information about all people waiting for a bus.
+The person_id and turn columns will contain all numbers from 1 to n, where n is the number of rows in the table.
+turn determines the order of which the people will board the bus, where turn=1 denotes the first person to board and turn=n denotes the last person to board.
+weight is the weight of the person in kilograms.
+ 
+
+There is a queue of people waiting to board a bus. However, the bus has a weight limit of 1000 kilograms, so there may be some people who cannot board.
+
+Write a solution to find the person_name of the last person that can fit on the bus without exceeding the weight limit. The test cases are generated such that the first person does not exceed the weight limit.
+
+Note that only one person can board the bus at any given turn.
+
+The result format is in the following example.
+
+Query:
+With CTE_Table as
+	(select  person_name ,sum(weight) over (order by turn ASC) as CUMM_Weight
+	from
+	Queue)
+select person_name
+from 
+CTE_Table
+where CUMM_Weight = 1000
+order by CUMM_Weight ASC
+;
+
+5) Movie Ratings:-
+Table: Movies
+
++---------------+---------+
+| Column Name   | Type    |
++---------------+---------+
+| movie_id      | int     |
+| title         | varchar |
++---------------+---------+
+movie_id is the primary key (column with unique values) for this table.
+title is the name of the movie.
+ 
+
+Table: Users
+
++---------------+---------+
+| Column Name   | Type    |
++---------------+---------+
+| user_id       | int     |
+| name          | varchar |
++---------------+---------+
+user_id is the primary key (column with unique values) for this table.
+The column 'name' has unique values.
+Table: MovieRating
+
++---------------+---------+
+| Column Name   | Type    |
++---------------+---------+
+| movie_id      | int     |
+| user_id       | int     |
+| rating        | int     |
+| created_at    | date    |
++---------------+---------+
+(movie_id, user_id) is the primary key (column with unique values) for this table.
+This table contains the rating of a movie by a user in their review.
+created_at is the user's review date. 
+ 
+
+Write a solution to:
+
+Find the name of the user who has rated the greatest number of movies. In case of a tie, return the lexicographically smaller user name.
+Find the movie name with the highest average rating in February 2020. In case of a tie, return the lexicographically smaller movie name.
+The result format is in the following example.
+
+Query:
+(select N as results 
+from
+(select U.name as N,count(M.rating) as COUNT
+	from Movies as Mo INNER JOIN MovieRating M
+	ON M.movie_id = Mo.movie_id
+	INNER JOIN 
+	Users U
+	on 
+	M.user_id = U.user_id
+	group by U.name)
+where COUNT IN 
+	(Select max(COUNT)
+	from 
+	(select U.name as N,count(M.rating) as COUNT
+	from Movies as Mo   
+	INNER JOIN
+	MovieRating M
+	ON 
+	M.movie_id = Mo.movie_id
+	INNER JOIN 
+	Users U
+	on 
+	M.user_id = U.user_id
+	group by U.name)
+	) order by N limit 1 )
+Union ALL
+(select Title from
+	(select Mo.title as Title,avg(M.rating) as Ratings 
+	from Movies as Mo   
+	INNER JOIN
+	MovieRating M
+	ON M.movie_id = Mo.movie_id
+	INNER JOIN 
+	Users U
+	on 
+	M.user_id = U.user_id
+	where extract(month from created_at ) = 2
+	group by Mo.title) as RATE
+where Ratings IN 
+	(select max(Ratings)
+	from  
+		(select Mo.title as Title,avg(M.rating) as Ratings 
+		from
+		Movies as Mo   
+		INNER JOIN
+		MovieRating M
+		ON 
+		M.movie_id = Mo.movie_id
+		INNER JOIN 
+		Users U
+		on 
+		M.user_id = U.user_id
+		where extract(month from created_at ) = 2
+		group by Mo.title)) 
+	order by Title limit 1);
+
+
+6) Apples & Oranges:-
+Table: Sales
+
++---------------+---------+
+| Column Name   | Type    |
++---------------+---------+
+| sale_date     | date    |
+| fruit         | enum    | 
+| sold_num      | int     | 
++---------------+---------+
+(sale_date, fruit) is the primary key (combination of columns with unique values) of this table.
+This table contains the sales of "apples" and "oranges" sold each day.
+ 
+
+Write a solution to report the difference between the number of apples and oranges sold each day.
+
+Return the result table ordered by sale_date.
+
+The result format is in the following example.
+
+Query:
+With Fruits_Diff_Table as 
+	(select  S_ONE_Date,(F_1- F_2) as Diff
+	from
+		(select S_1.sale_date as S_ONE_Date,S_1.fruit,S_1.sold_num as F_1, S_2.sale_date,S_2.fruit,S_2.sold_num as F_2
+		from
+		Sales S_1
+		INNER JOIN
+		Sales S_2
+		ON
+		S_1.sale_date = S_2.sale_date
+		where
+		S_1.fruit = 'apples'
+		and 
+		S_2.fruit = 'oranges'))
+select  S_ONE_Date as sale_date,Diff
+from 
+Fruits_Diff_Table;
+
+7) Capital Gains:-
+Table: Stocks
+
++---------------+---------+
+| Column Name   | Type    |
++---------------+---------+
+| stock_name    | varchar |
+| operation     | enum    |
+| operation_day | int     |
+| price         | int     |
++---------------+---------+
+(stock_name, operation_day) is the primary key (combination of columns with unique values) for this table.
+The operation column is an ENUM (category) of type ('Sell', 'Buy')
+Each row of this table indicates that the stock which has stock_name had an operation on the day operation_day with the price.
+It is guaranteed that each 'Sell' operation for a stock has a corresponding 'Buy' operation in a previous day. It is also guaranteed that each 'Buy' operation for a stock has a corresponding 'Sell' operation in an upcoming day.
+ 
+
+Write a solution to report the Capital gain/loss for each stock.
+
+The Capital gain/loss of a stock is the total gain or loss after buying and selling the stock one or many times.
+
+Return the result table in any order.
+
+The result format is in the following example.
+
+Query:
+With CTE as
+	(select stock_name,
+	sum(case when operation = 'Buy' then S End) as Buy,
+	sum(Case when operation = 'Sell' then S End) as Sell   
+	from
+		(select 
+		stock_name,operation,sum(price) as S
+		from
+		Stocks
+		group by  stock_name,operation
+		order by stock_name)
+	group by  stock_name)
+select stock_name,
+(Sell - Buy) as capital_gain_loss
+from CTE;
+
+8) Unpopular Books:-
+
+Table: Books
+
++----------------+---------+
+| Column Name    | Type    |
++----------------+---------+
+| book_id        | int     |
+| name           | varchar |
+| available_from | date    |
++----------------+---------+
+book_id is the primary key (column with unique values) of this table.
+ 
+
+Table: Orders
+
++----------------+---------+
+| Column Name    | Type    |
++----------------+---------+
+| order_id       | int     |
+| book_id        | int     |
+| quantity       | int     |
+| dispatch_date  | date    |
++----------------+---------+
+order_id is the primary key (column with unique values) of this table.
+book_id is a foreign key (reference column) to the Books table.
+ 
+
+Write a solution to report the books that have sold less than 10 copies in the last year, excluding books that have been available for less than one month from today. Assume today is 2019-06-23.
+
+Return the result table in any order.
+
+The result format is in the following example.
+
+Query:
+select  Distinct book_id,name
+from
+	(select B.book_id as book_id, B.name as name,
+	EXTRACT(month FROM '2019-06-23'::Date)-Date_Part('Month',B.available_from) as Months,Date_Part('Year',O.dispatch_date) as Year,sum(O.quantity) as Count
+	from 
+	Books B
+	LEFT JOIN
+	Orders O
+	ON 
+	B.book_id = O.book_id
+	where
+	EXTRACT(month FROM '2019-06-23'::Date)-Date_Part('Month',B.available_from) != 0
+	group by B.book_id, B.name,Months,Year)
+where 
+Count is null or Count<10;
+
+9) Evaluate Boolean Expression:
+Table Variables:
+
++---------------+---------+
+| Column Name   | Type    |
++---------------+---------+
+| name          | varchar |
+| value         | int     |
++---------------+---------+
+In SQL, name is the primary key for this table.
+This table contains the stored variables and their values.
+ 
+
+Table Expressions:
+
++---------------+---------+
+| Column Name   | Type    |
++---------------+---------+
+| left_operand  | varchar |
+| operator      | enum    |
+| right_operand | varchar |
++---------------+---------+
+In SQL, (left_operand, operator, right_operand) is the primary key for this table.
+This table contains a boolean expression that should be evaluated.
+operator is an enum that takes one of the values ('<', '>', '=')
+The values of left_operand and right_operand are guaranteed to be in the Variables table.
+ 
+
+Evaluate the boolean expressions in Expressions table.
+
+Return the result table in any order.
+
+The result format is in the following example.
+
+Query:
+select E.left_operand, E.operator,E.right_operand,
+(case
+	when E.operator = '=' and V1.value = V2.value then true 
+	when E.operator = '>' and V1.value > V2.value then true
+	when E.operator = '<' and V1.value < V2.value then true
+	else false END)::text as value
+from 
+Variables V1
+JOIN
+Expressions E
+ON V1.name =E.left_operand
+JOIN 
+Variables V2
+ON V2.name = E.right_operand;
+
+10) Team Scores in Football Tournament:-
+Table: Teams
+
++---------------+----------+
+| Column Name   | Type     |
++---------------+----------+
+| team_id       | int      |
+| team_name     | varchar  |
++---------------+----------+
+team_id is the column with unique values of this table.
+Each row of this table represents a single football team.
+ 
+
+Table: Matches
+
++---------------+---------+
+| Column Name   | Type    |
++---------------+---------+
+| match_id      | int     |
+| host_team     | int     |
+| guest_team    | int     | 
+| host_goals    | int     |
+| guest_goals   | int     |
++---------------+---------+
+match_id is the column of unique values of this table.
+Each row is a record of a finished match between two different teams. 
+Teams host_team and guest_team are represented by their IDs in the Teams table (team_id), and they scored host_goals and guest_goals goals, respectively.
+ 
+
+You would like to compute the scores of all teams after all matches. Points are awarded as follows:
+A team receives three points if they win a match (i.e., Scored more goals than the opponent team).
+A team receives one point if they draw a match (i.e., Scored the same number of goals as the opponent team).
+A team receives no points if they lose a match (i.e., Scored fewer goals than the opponent team).
+Write a solution that selects the team_id, team_name and num_points of each team in the tournament after all described matches.
+
+Return the result table ordered by num_points in decreasing order. In case of a tie, order the records by team_id in increasing order.
+
+The result format is in the following example.
+
+Query:
+select team_id ,team_name,
+sum(case 
+	when team_id = m.host_team and m.host_goals > m.guest_goals then 3
+	when team_id = m.host_team and m.host_goals = m.guest_goals then 1
+	when team_id = m.guest_team and m.host_goals < m.guest_goals then 3
+	when team_id = m.guest_team and m.host_goals = m.guest_goals then 1
+	Else 0
+	END) as num_points 
+from 
+teams t, matches m
+group by  team_id,team_name
+order by num_points desc,team_id;
